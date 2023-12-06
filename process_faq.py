@@ -1,3 +1,5 @@
+import sys
+import math
 import pandas as pd
 from anytree import Node, RenderTree, AsciiStyle, find, PreOrderIter
 
@@ -25,23 +27,23 @@ caseIdSet = set()
 ##############################################
 # Utility functions
 
-def handleRootNodeTypeExcelRow(label):
+def handleRootNodeTypeExcelRow(label, respond_id, action_button_id, procedure_advisory_id):
     global root
-    root = Node(label, nodetype="type1")
+    root = Node(label, nodetype="type1", RESPONSE_ID_LIST=respond_id, ACTION_BUTTON_ID_LIST=action_button_id, PROCEDURE_ADVISORY_ID_LIST=procedure_advisory_id)
 
-def handleNonLeafType2AOptionEntryExeclRow(parent, label, respond_id):
+def handleNonLeafType2AOptionEntryExeclRow(parent, label, respond_id, action_button_id, procedure_advisory_id):
     # TODO: A validator for type 2a
-    node = Node(label, parent, nodetype="type2A", RESPONSE_ID_LIST=respond_id)
+    node = Node(label, parent, nodetype="type2A", RESPONSE_ID_LIST=respond_id, ACTION_BUTTON_ID_LIST=action_button_id, PROCEDURE_ADVISORY_ID_LIST=procedure_advisory_id)
     return node
 
-def handleNonLeafType2BJumpToCaseExeclRow(parent, label, jump_to_case):
+def handleNonLeafType2BJumpToCaseExeclRow(parent, label, respond_id, jump_to_case):
     # TODO: A validator for type 2b
-    node = Node(label, parent, nodetype="type2B", JUMP_TO_CASE=jump_to_case)
+    node = Node(label, parent, nodetype="type2B", RESPONSE_ID_LIST=respond_id, JUMP_TO_CASE=jump_to_case)
     return node
 
-def handleLeafType3ExeclRow(parent, label):
+def handleLeafType3ExeclRow(parent, label, respond_id):
     # TODO: A validator for type3 
-    node = Node(label, parent, nodetype="type3")
+    node = Node(label, parent, nodetype="type3", RESPONSE_ID_LIST=respond_id, SET_CONTEXT_EXPRESSION=set_context_expression)
     return node
 
 def isBlank(label):
@@ -72,6 +74,15 @@ for index, row in df.iterrows():
     parentCaseId = row.iloc[faq_column.get("CASE_PARENT")-1]
     respond_id = row.iloc[faq_column.get("RESPONSE_ID_LIST")-1]
     jump_to_case = row.iloc[faq_column.get("JUMP_TO_CASE")-1]
+    action_button_id = row.iloc[faq_column.get("ACTION_BUTTON_ID_LIST")-1]
+    if math.isnan(action_button_id):
+        action_button_id = "<blank>"
+    procedure_advisory_id = row.iloc[faq_column.get("PROCEDURE_ADVISORY_ID_LIST")-1]
+    if math.isnan(procedure_advisory_id):
+        procedure_advisory_id = "<blank>"
+    set_context_expression = row.iloc[faq_column.get("SET_CONTEXT_EXPRESSION")-1]
+    if math.isnan(set_context_expression):
+        set_context_expression = "<blank>"
 
 # Types of rows
 # 1. root node
@@ -123,7 +134,7 @@ for index, row in df.iterrows():
         if root != None:
             raise Exception("Bad FAQ file, multiple root nodes")
         else:
-            handleRootNodeTypeExcelRow(caseId)
+            handleRootNodeTypeExcelRow(caseId, respond_id, action_button_id, procedure_advisory_id)
     else:
         # find parent node
         # create node to parent
@@ -135,25 +146,56 @@ for index, row in df.iterrows():
         if isParent(caseId):
             # type 2a/2b, parent node
             if isBlank(jump_to_case):
-                handleNonLeafType2AOptionEntryExeclRow(parentNode, caseId, respond_id)
+                handleNonLeafType2AOptionEntryExeclRow(parentNode, caseId, respond_id, action_button_id, procedure_advisory_id)
             else:
-                handleNonLeafType2BJumpToCaseExeclRow(parentNode, caseId, jump_to_case)
+                handleNonLeafType2BJumpToCaseExeclRow(parentNode, caseId, respond_id, jump_to_case)
         else:
             if isBlank(jump_to_case):
-                handleLeafType3ExeclRow(parentNode, caseId)
-            else:
-                raise Exception("Bad non-leaf entry at CASE_ID " + caseId)
+                handleLeafType3ExeclRow(parentNode, caseId, respond_id)
+            #else:
+            #    raise Exception("Bad non-leaf entry at CASE_ID " + caseId)
 
     # if non-leaf create jump to case (TODO: forward reference)
     # if jump to case does not name myself as parent, use a symlink node
     # eles create respond ID
 
+# TODO: tree verifier
+
 ##############################################
 # tree visualization dump
-print(RenderTree(root, style=AsciiStyle()).by_attr())
+#print(RenderTree(root, style=AsciiStyle()).by_attr())
 
 ##############################################
 # Iterate tree and generate rules
 
-#for node in PreOrderIter(root):
+#rule <CASE_ID>
+#// Attributes
+#when
+#    getChatContext() == <CASE_ID> 
+#then
+#    // Call stub functions according to type 1/2a, 2b, and 3 with data from node
+#end
+
+def printRuleForNode(node, fileStream):
+    print("rule \"" + node.name + "\"", file=fileStream)
+    print("  when", file=fileStream)
+    print("    chatContext() == " + node.name)
+    print("  then", file=fileStream)
+    if (node.nodetype == "type1"):
+        print("      //System.out.println(\"type1,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",ACTION_BUTTON_ID_LIST=" + node.ACTION_BUTTON_ID_LIST + ",PROCEDURE_ADVISORY_ID_LIST=" + node.PROCEDURE_ADVISORY_ID_LIST + "\")")
+    else:
+        if (node.nodetype == "type2A"):
+            print("      //System.out.println(\"type2A,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",ACTION_BUTTON_ID_LIST=" + node.ACTION_BUTTON_ID_LIST + ",PROCEDURE_ADVISORY_ID_LIST=" + node.PROCEDURE_ADVISORY_ID_LIST + "\")" )
+        else:
+            if (node.nodetype == "type2B"):
+                print("      //System.out.println(\"type2B,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",JUMP_TO_CASE=" + node.JUMP_TO_CASE + "\")" )
+            else:
+                print("      //System.out.println(\"type3,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",SET_CONTEXT_EXPRESSION=" + node.SET_CONTEXT_EXPRESSION + "\")" )
+    print("end //" + node.name, file=fileStream)
+    print("", file=fileStream)
+    print("##############", file=fileStream)
+    print("", file=fileStream)
+
+for node in PreOrderIter(root):
 #    print(node)
+   printRuleForNode(node, sys.stdout)
