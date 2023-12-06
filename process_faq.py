@@ -87,30 +87,34 @@ for index, row in df.iterrows():
 #   -Most likely hook up to content or custom logic (SET_CONTEXT_EXPRESION)
 # leaf nodes are attached to one parent node, while non-leaf nodes may jump to leaf nodes with CASE_ID already defined
 # 
+#
+# Execution engine
+#
 # Input: context(current node), intents, selection input
-# Output: response code, buttons, new conetxt(next node)
+# Output: response code, new conetxt(next node), buttons
+#
+#         ┌──────────────┐                 ┌────────────────┐               ┌────────────────┐
+#         │              │               ┌────┐             │               │                │
+#         │ Bot context  │──────────────>│API │ Rule Engine │──────────────>│ Action for bot │──────────────>
+#      ┌->│ (node state) │               └────┘             │  type 1/2b/3  │                │ Return to bot  
+#      │  └──────────────┘                 └────────────────┘               └────────────────┘
+#      │                                           │ type 2b
+#      └───────────────────────────────────────────┘
 # 
-# Each call to the dialog flow engine will start from the chat context (current node) and carry out required evaluation, action of that single node
+# -Each iteratiion to the dialog flow engine will start from the chat context (current node), the engine will evaluate matching rule (to currenrt node) for executing action of that single node
+# -At the end of iteration the dialog flow engine returns 1) respond dode, 2) new context (next node for iteration), 3) optionally required action for this node (e.g. custom logic, button to render, jump to case)
 # -If a call is triggered by intent, or a selection input, the chat context (current node) is first set as the selected node, before executing the node
 # -A node execution 
 #   -Type 1 & type 2a node
-#       -Action button list, advisory ID list are provisioned as outout
-#       -return with respond ID
+#       -Action button list, advisory ID list are provisioned as output
+#       -Return to bot waiting for next input
 #   -Type 2b node
-#       -Junp to case is identified and provisioned as output
-#       -return with resspond ID
+#       -Jump to case -> set context (node) to jump target
+#       -Next iteration of rule engine
 #   -Type 3 node
 #       -Required content, custom logic from SET_CONTEXT_EXPRESSION is provisioned as output
-#       -return with respond ID
+#       -Return to bot waiting for next input
 # -Tranlate above in Drools DRL
-#
-#rule <CASE_ID>
-#    // Attributes
-#    when
-#        getChatContext() == <CASE_ID> 
-#    then
-#        // Call stub functions according to type 1/2a, 2b, and 3 with data from node
-#end
 #   
 #   The rule execution can be implemented as Drools rules where each row is a business rule, each node have it's own dedicated rules filtered by CASE_ID
 
