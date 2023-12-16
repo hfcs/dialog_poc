@@ -168,6 +168,15 @@ for index, row in df.iterrows():
 ##############################################
 # Iterate tree and generate rules
 
+# Drools structure
+#
+# public static class ChatSession {
+#   ...
+#   private int node_id;
+#   ...
+# }
+#
+#
 #rule <CASE_ID>
 #// Attributes
 #when
@@ -179,23 +188,28 @@ for index, row in df.iterrows():
 def printRuleForNode(node, fileStream):
     print("rule \"" + node.name + "\"", file=fileStream)
     print("  when", file=fileStream)
-    print("    chatContext() == " + node.name)
+    print("    /chatIntentSession[ nodeId == \"" + node.name +"\" ]")
     print("  then", file=fileStream)
     if (node.nodetype == "type1"):
-        print("      //System.out.println(\"type1,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",ACTION_BUTTON_ID_LIST=" + node.ACTION_BUTTON_ID_LIST + ",PROCEDURE_ADVISORY_ID_LIST=" + node.PROCEDURE_ADVISORY_ID_LIST + "\")")
+        print("    //System.out.println(\"type1,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",ACTION_BUTTON_ID_LIST=" + node.ACTION_BUTTON_ID_LIST + ",PROCEDURE_ADVISORY_ID_LIST=" + node.PROCEDURE_ADVISORY_ID_LIST + "\")")
     else:
         if (node.nodetype == "type2A"):
-            print("      //System.out.println(\"type2A,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",ACTION_BUTTON_ID_LIST=" + node.ACTION_BUTTON_ID_LIST + ",PROCEDURE_ADVISORY_ID_LIST=" + node.PROCEDURE_ADVISORY_ID_LIST + "\")" )
+            print("    //System.out.println(\"type2A,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",ACTION_BUTTON_ID_LIST=" + node.ACTION_BUTTON_ID_LIST + ",PROCEDURE_ADVISORY_ID_LIST=" + node.PROCEDURE_ADVISORY_ID_LIST + "\")" )
         else:
             if (node.nodetype == "type2B"):
-                print("      //System.out.println(\"type2B,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",JUMP_TO_CASE=" + node.JUMP_TO_CASE + "\")" )
+                print("    //System.out.println(\"type2B,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",JUMP_TO_CASE=" + node.JUMP_TO_CASE + "\")" )
             else:
-                print("      //System.out.println(\"type3,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",SET_CONTEXT_EXPRESSION=" + node.SET_CONTEXT_EXPRESSION + "\")" )
+                print("    //System.out.println(\"type3,RESPONSE_ID_LIST=" + node.RESPONSE_ID_LIST + ",SET_CONTEXT_EXPRESSION=" + node.SET_CONTEXT_EXPRESSION + "\")" )
     print("end //" + node.name, file=fileStream)
     print("", file=fileStream)
     print("##############", file=fileStream)
     print("", file=fileStream)
 
+print ("package com.hangseng;", file=sys.stdout)
+print ("", file=sys.stdout)
+print ("unit ChatIntentStateUnit;", file=sys.stdout)
+print ("", file=sys.stdout)
+print("##############", file=sys.stdout)
 for node in PreOrderIter(root):
 #    print(node)
    printRuleForNode(node, sys.stdout)
