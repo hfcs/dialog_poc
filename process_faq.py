@@ -218,3 +218,4 @@ for root in dialogFlowForest.getTreeRootsList():
         NodeToDrlRulePrinterSingleton().printRuleCommentForNode(node, sys.stdout)
         NodeToDrlRulePrinterSingleton().printRuleForNode(node, sys.stdout)
         print("##############", file=sys.stdout)
+        

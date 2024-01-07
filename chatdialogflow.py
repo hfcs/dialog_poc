@@ -64,8 +64,11 @@ class JumpToNode (BaseNode):
         super(JumpToNode, self).__init__(workspaceCaseId, respondIdList)
         self.__jumpToCaseId = jumpToCaseId
 
-    def getJumptToCaseId(self):
+    def getJumpToCaseId(self):
         return self.__jumpToCaseId
+    
+    def clone(self):
+        return JumpToNode(self.getWorkspaceCaseId(), self.getRespondIdList(), self.getJumpToCaseId())
 
 class ButtonCaseIdListNode(BaseNode):
     __buttonCaseIdList = None
@@ -82,6 +85,9 @@ class ButtonCaseIdListNode(BaseNode):
     def getActionButtonIdList(self):
         return self.__actionButtonIdList
 
+    
+    def clone(self):
+        return ButtonCaseIdListNode(self.getWorkspaceCaseId(), self.getRespondIdList(), self.getButtonCaseIdList(), self.getActionButtonIdList())
 
 class LeafNode (BaseNode):
     __procedureAdvisoryIdList = None
@@ -92,6 +98,9 @@ class LeafNode (BaseNode):
 
     def getProcedureAdvisoryIdList(self):
         return self.__procedureAdvisoryIdList 
+    
+    def clone(self):
+        return JumpToNode(self.getWorkspaceCaseId(), self.getRespondIdList(), self.getProcedureAdvisoryIdList())
 
 # A class for global object that handle everything about the dialog flow tree operation
 class DialogFlowForest:
@@ -189,8 +198,42 @@ class DialogFlowForest:
             for line in MermaidExporter(root):
                 print(line, file=fileStream)
 
+class ClonedDialogTree:
+
+    __targetRoot = None
+    __nodeSet = set()
+
+    def __init__(self, sourceRoot: Node):
+        self.__targetRoot = self.___cloneTreeRecursive(sourceRoot)
+
+    def __insertNode(self, node: Node):
+        self.__nodeSet.add(node)
+
+    def ___cloneTreeRecursive(self, sourceNode: Node):
+        # Recursive cloner that go root first, this is needed as we support multiple parent and used SymlinkNode as workaround
+        # Hence a two pass implementing node creation pass and parent/children pass cannot be done
+
+        # clone this node
+        clonedNode = sourceNode.clone()
+
+        # for each child clone recurive and set up parent/child
+        if len(sourceNode.children) > 0:
+            childrenList = list()
+
+            for sourceChild in sourceNode.children:
+                clonedChild = self.___cloneTreeRecursive(sourceChild)
+                childrenList.append(clonedChild)
+                clonedChild.parent = clonedNode
+        
+            clonedNode.children = childrenList
+
+        return clonedNode
+
+    def getRoot(self):
+        return self.__targetRoot
+
 ###############################################################################
-# Code emmition pass, iterate tree and generate rules
+# Code emmission pass, iterate tree and generate rules
 #
 # Well known keys in dialog context
 #
@@ -301,7 +344,7 @@ class NodeToDrlRulePrinterSingleton:
             print("    $dialog.getOutput().setButtons(RuleUtil.setButtons(" + self.__generateUiCommandFromButtonList(node.getButtonCaseIdList()) + "))", file=fileStream)
         else:
             if isinstance(node, JumpToNode):
-                print("    $dialog.getContext().put(\"jump_to\", \"" + node.getJumptToCaseId() + "\");", file=fileStream)
+                print("    $dialog.getContext().put(\"jump_to\", \"" + node.getJumpToCaseId() + "\");", file=fileStream)
             else:
                 if isinstance(node, LeafNode):
                     if len(node.getProcedureAdvisoryIdList()) > 0:
