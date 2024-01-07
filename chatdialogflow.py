@@ -34,82 +34,81 @@ def _isReservedCaseId(caseId: str):
 # Classes
 
 class WorkspaceCaseId:
-    __workspace = ""
-    __caseId = ""
+    _workspace = ""
+    _caseId = ""
 
     def __init__(self, workspace, caseId):
-        self.__workspace = workspace
-        self.__caseId = caseId
+        self._workspace = workspace
+        self._caseId = caseId
 
     def __eq__(self, other):
-        return (self.__workspace == other.getWorkspace()) and (self.__caseId == other.getCaseId())
+        return (self._workspace == other.getWorkspace()) and (self._caseId == other.getCaseId())
     
     def __str__(self):
-        return self.__workspace + ":" + self.__caseId
+        return self._workspace + ":" + self._caseId
     
     def getWorkspace(self):
-        return self.__workspace
+        return self._workspace
     
     def getCaseId(self):
-        return self.__caseId
+        return self._caseId
     
 class BaseNode (NodeMixin):
-    __workspaceCaseId = None
-    __respondIdList = None
+    _workspaceCaseId = None
+    _respondIdList = None
     
     def __init__(self, workspaceCaseId: WorkspaceCaseId, respondIdList: list[str]):
         super(BaseNode, self).__init__()
         self.name = str(workspaceCaseId)
-        self.__workspaceCaseId = workspaceCaseId
-        self.__respondIdList = respondIdList
+        self._workspaceCaseId = workspaceCaseId
+        self._respondIdList = respondIdList
     
     def getWorkspaceCaseId(self):
-        return self.__workspaceCaseId
+        return self._workspaceCaseId
     
     def getRespondIdList(self):
-        return self.__respondIdList
+        return self._respondIdList
 
 class JumpToNode (BaseNode):
-    __jumpToCaseId = None
+    _jumpToCaseId = None
 
     def __init__(self, workspaceCaseId: WorkspaceCaseId, respondIdList: list[str], jumpToCaseId: str):
         super(JumpToNode, self).__init__(workspaceCaseId, respondIdList)
-        self.__jumpToCaseId = jumpToCaseId
+        self._jumpToCaseId = jumpToCaseId
 
     def getJumpToCaseId(self):
-        return self.__jumpToCaseId
+        return self._jumpToCaseId
     
     def clone(self):
         return JumpToNode(self.getWorkspaceCaseId(), self.getRespondIdList(), self.getJumpToCaseId())
 
 class ButtonCaseIdListNode(BaseNode):
-    __buttonCaseIdList = None
-    __actionButtonIdList = None
+    _buttonCaseIdList = None
+    _actionButtonIdList = None
 
     def __init__(self, workspaceCaseId: WorkspaceCaseId, respondIdList: list[str], buttonCaseIdList: list[str], actionButtonIdList: list[str]):
         super(ButtonCaseIdListNode, self).__init__(workspaceCaseId, respondIdList)
-        self.__buttonCaseIdList = buttonCaseIdList
-        self.__actionButtonIdList = actionButtonIdList
+        self._buttonCaseIdList = buttonCaseIdList
+        self._actionButtonIdList = actionButtonIdList
 
     def getButtonCaseIdList(self):
-        return self.__buttonCaseIdList
+        return self._buttonCaseIdList
     
     def getActionButtonIdList(self):
-        return self.__actionButtonIdList
+        return self._actionButtonIdList
 
-    
     def clone(self):
         return ButtonCaseIdListNode(self.getWorkspaceCaseId(), self.getRespondIdList(), self.getButtonCaseIdList(), self.getActionButtonIdList())
 
 class LeafNode (BaseNode):
-    __procedureAdvisoryIdList = None
+    _procedureAdvisoryIdList = None
 
     def __init__(self, workspaceCaseId: WorkspaceCaseId, respondIdList: list[str], procedureAdvisoryIdList: list[str]):
         super(LeafNode, self).__init__(workspaceCaseId, respondIdList)
-        self.__procedureAdvisoryIdList = procedureAdvisoryIdList
+        self._procedureAdvisoryIdList = procedureAdvisoryIdList
 
     def getProcedureAdvisoryIdList(self):
-        return self.__procedureAdvisoryIdList 
+        return self._procedureAdvisoryIdList 
     
     def clone(self):
         return JumpToNode(self.getWorkspaceCaseId(), self.getRespondIdList(), self.getProcedureAdvisoryIdList())
@@ -118,25 +117,25 @@ class LeafNode (BaseNode):
 class DialogFlowForest:
     # Notice Python dictionary are pass by reference so we are actually playing around real node elements created
 
-    __nodeDictByWorkspace = {}
-    __workspaceTreeRootDict = {}
+    _nodeDictByWorkspace = {}
+    _workspaceTreeRootDict = {}
 
     def __init__(self):
         # dictionary of workspace (key) and all nodes in their trees (value as set)
-        self.__nodeDictByWorkspace = {}
+        self._nodeDictByWorkspace = {}
         ## dictionary of workspace (key) and their tree root (value)
-        self.__workspaceTreeRootDict = {}
+        self._workspaceTreeRootDict = {}
 
     def __insertNode(self, workspace:str, node:Node):
-        if workspace in self.__nodeDictByWorkspace.keys():
-            workspaceNodeSet = self.__nodeDictByWorkspace.get(workspace)
+        if workspace in self._nodeDictByWorkspace.keys():
+            workspaceNodeSet = self._nodeDictByWorkspace.get(workspace)
             workspaceNodeSet.add(node)
         else:
-            self.__nodeDictByWorkspace.update({workspace:{node}})
+            self._nodeDictByWorkspace.update({workspace:{node}})
 
     # Use the fact that WorkspaceCaseId is matched by workspace:case_id as equality
     def __findNodeInWorkspace(self, workspaceCaseId: WorkspaceCaseId):
-        nodeSetinWorkspace = self.__nodeDictByWorkspace.get(workspaceCaseId.getWorkspace())
+        nodeSetinWorkspace = self._nodeDictByWorkspace.get(workspaceCaseId.getWorkspace())
         if nodeSetinWorkspace == None:
             raise Exception("workspace " + workspaceCaseId.getWorkspace() + " does not exist")
         for node in nodeSetinWorkspace:
@@ -153,7 +152,7 @@ class DialogFlowForest:
         #print("__createButtonCaseIdListNode " + str(workspaceCaseId))
         node = ButtonCaseIdListNode(workspaceCaseId, respondIdList, buttonCaseIdList, actionButtonIdList)
         if _isReservedCaseId(workspaceCaseId.getCaseId()):
-            self.__workspaceTreeRootDict.update({workspaceCaseId.getWorkspace(): node})
+            self._workspaceTreeRootDict.update({workspaceCaseId.getWorkspace(): node})
         self.__insertNode(workspaceCaseId.getWorkspace(), node)
 
     def __createLeafNode (self, workspaceCaseId: WorkspaceCaseId, respondIdList: list, procedureAdvisoryIdList: list):
@@ -167,11 +166,11 @@ class DialogFlowForest:
 
     def __connectParentChildren (self):
         #print("***** tree root dictionary *****")
-        #print(self.__workspaceTreeRootDict)
+        #print(self._workspaceTreeRootDict)
         #print("***** forest dictionary *****")
-        #print(self.__nodeDictByWorkspace)
+        #print(self._nodeDictByWorkspace)
         #print("***** all nodes created *****")
-        for workspaceNodeSet in self.__nodeDictByWorkspace.values():
+        for workspaceNodeSet in self._nodeDictByWorkspace.values():
             #print(workspaceNodeSet)
             for node in workspaceNodeSet:
 
@@ -239,28 +238,29 @@ class DialogFlowForest:
         self.__connectParentChildren()
                         
     def getTreeRootsList(self):
-        return list(self.__workspaceTreeRootDict.values())
+        return list(self._workspaceTreeRootDict.values())
 
     def printForest (self, fileStream):                
         # tree dump
-        for root in self.__workspaceTreeRootDict.values():
+        for root in self._workspaceTreeRootDict.values():
             print(RenderTree(root, style=AsciiStyle()).by_attr(), file=fileStream)
 
     def printMermaid(self, fileStream):
-        for root in self.__workspaceTreeRootDict.values():
+        for root in self._workspaceTreeRootDict.values():
             for line in MermaidExporter(root):
                 print(line, file=fileStream)
 
 class ClonedDialogTree:
 
-    __targetRoot = None
-    __nodeSet = set()
+    _targetRoot = None
+    _nodeSet = set()
 
     def __init__(self, sourceRoot: Node):
-        self.__targetRoot = self.___cloneTreeRecursive(sourceRoot)
+        self._targetRoot = self.___cloneTreeRecursive(sourceRoot)
+        self._nodeSet = set()
 
     def __insertNode(self, node: Node):
-        self.__nodeSet.add(node)
+        self._nodeSet.add(node)
 
     def ___cloneTreeRecursive(self, sourceNode: Node):
         # Recursive cloner that go root first, this is needed as we support multiple parent and used SymlinkNode as workaround
@@ -283,7 +283,7 @@ class ClonedDialogTree:
         return clonedNode
 
     def getRoot(self):
-        return self.__targetRoot
+        return self._targetRoot
     
 
 # Types of rows
@@ -313,13 +313,19 @@ class ClonedDialogTree:
     
 class InputTableValidator:
     # "Symbol table", a dictionary of workspace (key) and their defined Case ID set (value as set of case ID)
-    __workspaceCaseIdDict = {}
+    _workspaceCaseIdDict = {}
     # "Local reference table", a dictionary of workspace (key) and their referenced jump to Case ID set (value as set of case ID)
-    __workspaceJumpToDict = {}
+    _workspaceJumpToDict = {}
     # "Local reference table", a dictionary of workspace (key) and their referenced button Case ID List set (value as set of case ID)
-    __workspaceButtonCaseIdListDict = {}
+    _workspaceButtonCaseIdListDict = {}
     # "Global reference table", a set of (workspace, case_id) of workspace switching reference
-    __switchWorkspaceSet = set()
+    _switchWorkspaceSet = set()
+
+    def __init__(self):
+        self._workspaceCaseIdDict = {}
+        self._workspaceJumpToDict = {}
+        self._workspaceButtonCaseIdListDict = {}
+        self._switchWorkspaceSet = set()
 
     ###############################################################################
     # Pre-scan pass for recording symbol tables for validation
@@ -360,30 +366,30 @@ class InputTableValidator:
 
 
             # "Symbol table", a dictionary of workspace (key) and their defined Case ID set (value as set of case ID)
-            if workspace in self.__workspaceCaseIdDict:
-                caseIdList = self.__workspaceCaseIdDict.get(workspace)
+            if workspace in self._workspaceCaseIdDict:
+                caseIdList = self._workspaceCaseIdDict.get(workspace)
                 if caseId not in caseIdList:
                     caseIdList.add(caseId)
                 else:
                     raise Exception ("Case ID \'" + caseId + "\' is defined more than once in workspace \'" + workspace + "\'")
             else:
-                self.__workspaceCaseIdDict.update({workspace:{caseId}})
+                self._workspaceCaseIdDict.update({workspace:{caseId}})
 
             # "Local reference table", a dictionary of workspace (key) and their referenced jump to/button list Case ID set (value as set of case ID))
             if isBlank(jumpToCase) == False:
-                if workspace in self.__workspaceJumpToDict:
-                    jumpToList = self.__workspaceJumpToDict.get(workspace)
+                if workspace in self._workspaceJumpToDict:
+                    jumpToList = self._workspaceJumpToDict.get(workspace)
                     jumpToList.add(jumpToCase)
                 else:
-                    self.__workspaceJumpToDict.update({workspace:{jumpToCase}})
+                    self._workspaceJumpToDict.update({workspace:{jumpToCase}})
 
             # "Local reference table", a dictionary of workspace (key) and their referenced button Case ID List set (value as set of case ID)    
             for buttonCaseId in buttonCaseIdList:
-                if workspace in self.__workspaceButtonCaseIdListDict:
-                    jumpToList = self.__workspaceButtonCaseIdListDict.get(workspace)
+                if workspace in self._workspaceButtonCaseIdListDict:
+                    jumpToList = self._workspaceButtonCaseIdListDict.get(workspace)
                     jumpToList.add(buttonCaseId)
                 else:
-                    self.__workspaceButtonCaseIdListDict.update({workspace:{buttonCaseId}})
+                    self._workspaceButtonCaseIdListDict.update({workspace:{buttonCaseId}})
 
             # "Global reference table", a set of (workspace, case_id) of workspace switching reference
             #_switchWorkspaceSet = set()
@@ -400,26 +406,26 @@ class InputTableValidator:
     #   TODO: do something
             
         # Validate all jump-to are defined
-        for workspace in self.__workspaceJumpToDict.keys():
-            if workspace in self.__workspaceCaseIdDict:
-                for jumpToCaseId in self.__workspaceJumpToDict.get(workspace):
-                    if jumpToCaseId not in self.__workspaceCaseIdDict.get(workspace):
+        for workspace in self._workspaceJumpToDict.keys():
+            if workspace in self._workspaceCaseIdDict:
+                for jumpToCaseId in self._workspaceJumpToDict.get(workspace):
+                    if jumpToCaseId not in self._workspaceCaseIdDict.get(workspace):
                         raise Exception ("Jump to case ID \'" + jumpToCaseId + "\' is not defined in workspace " + workspace)
             else:
                 raise Exception ("No case ID are defined in workspace " + workspace)
 
         # Validate all button case id list are defined
-        for workspace in self.__workspaceButtonCaseIdListDict.keys():
-            if workspace in self.__workspaceCaseIdDict:
-                for jumpToCaseId in self.__workspaceButtonCaseIdListDict.get(workspace):
-                    if jumpToCaseId not in self.__workspaceCaseIdDict.get(workspace):
+        for workspace in self._workspaceButtonCaseIdListDict.keys():
+            if workspace in self._workspaceCaseIdDict:
+                for jumpToCaseId in self._workspaceButtonCaseIdListDict.get(workspace):
+                    if jumpToCaseId not in self._workspaceCaseIdDict.get(workspace):
                         raise Exception ("Button case ID list \'" + jumpToCaseId + "\' is not defined in workspace " + workspace)
             else:
                 raise Exception ("No case ID are defined in workspace " + workspace)
 
         # Validate all switch workspace case id are defined   
-        for switchWorkspaceItem in self.__switchWorkspaceSet:
-            if switchWorkspaceItem.value() not in self.__workspaceCaseIdDict.get(switchWorkspaceItem.key()):
+        for switchWorkspaceItem in self._switchWorkspaceSet:
+            if switchWorkspaceItem.value() not in self._workspaceCaseIdDict.get(switchWorkspaceItem.key()):
                 raise Exception ("Switch workspace case ID \'" + switchWorkspaceItem.value() + "\' is not defined in workspace " + switchWorkspaceItem.key())
         
 
