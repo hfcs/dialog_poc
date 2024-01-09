@@ -56,18 +56,35 @@ class WorkspaceCaseId:
 class BaseNode (NodeMixin):
     _workspaceCaseId = None
     _respondIdList = None
+
+    # internal state, used for tracking compare, that is not used in comparison
+    _comparisonEqualFlag = None
     
     def __init__(self, workspaceCaseId: WorkspaceCaseId, respondIdList: list[str]):
         super(BaseNode, self).__init__()
         self.name = str(workspaceCaseId)
         self._workspaceCaseId = workspaceCaseId
         self._respondIdList = respondIdList
+        self._comparisonEqualFlag = None
     
     def getWorkspaceCaseId(self):
         return self._workspaceCaseId
     
     def getRespondIdList(self):
         return self._respondIdList
+
+    # __eq__() have other side effect, so use a dedicated equivalence function
+    def nodeComparison(self, other):
+        return self.getWorkspaceCaseId() == other.getWorkspaceCaseId() and self.getRespondIdList() == other.getRespondIdList()
+    
+    def setComparionSame(self, state: bool):
+        self._comparisonEqualFlag = state
+    
+    def isComparedSame(self):
+        if self._comparisonEqualFlag == None:
+            return False
+        
+        return self._comparisonEqualFlag       
 
 class JumpToNode (BaseNode):
     _jumpToCaseId = None
@@ -87,7 +104,7 @@ class ButtonCaseIdListNode(BaseNode):
     _actionButtonIdList = None
 
     def __init__(self, workspaceCaseId: WorkspaceCaseId, respondIdList: list[str], buttonCaseIdList: list[str], actionButtonIdList: list[str]):
-        super(ButtonCaseIdListNode, self).__init__(workspaceCaseId, respondIdList)
+        super().__init__(workspaceCaseId, respondIdList)
         self._buttonCaseIdList = buttonCaseIdList
         self._actionButtonIdList = actionButtonIdList
 
@@ -284,6 +301,44 @@ class ClonedDialogTree:
 
     def getRoot(self):
         return self._targetRoot
+    
+    def __setTreeRecursiveMarkDiffer(self, myTree):
+        myTree.setComparionSame(False)
+
+        for sourceChild in myTree.children:
+            self.__setTreeRecursiveMarkDiffer(sourceChild)
+    
+    def __compareTreeRecursive(self, myTree: BaseNode, otherTree: BaseNode):
+
+        # compare myself and other, continue if they are the same, set whole tree differs otherwise
+        if myTree.nodeComparison(otherTree):
+            myTree.setComparionSame(True)
+
+            # for each child do the same
+            for sourceChild in myTree.children:
+                foundMatchingChildFromOther = None
+                for targetChild in otherTree.children:
+                    if sourceChild.nodeComparison(targetChild):
+                        foundMatchingChildFromOther = targetChild
+                        break
+
+                if foundMatchingChildFromOther:
+                    self.__compareTreeRecursive(sourceChild, foundMatchingChildFromOther)
+                else:
+                    self.__setTreeRecursiveMarkDiffer(sourceChild)
+        else:
+            self.__setTreeRecursiveMarkDiffer(myTree)
+    
+    def markMyDelta(self, other):
+        self.__compareTreeRecursive(self.getRoot(), other.getRoot())
+
+    def printTree (self, fileStream):                
+        # tree dump
+        print(RenderTree(self.getRoot(), style=AsciiStyle()).by_attr(), file=fileStream)
+    
+    def printMermaid(self, fileStream):
+        for line in MermaidExporter(self.getRoot(), nodefunc=lambda node: '["%s"]' % (node.name) if node.isComparedSame() else '[\\"%s"/]' % (node.name) ):
+            print(line, file=fileStream)
     
 
 # Types of rows
