@@ -234,7 +234,10 @@ class DialogFlowForest:
             #if isBlank(respond_id_list):
             #    raise Exception ("Respond ID List cannot be blank")  
 
-            respondIdList = [item.strip() for item in respond_id_list.split(",")]
+            if (isBlank(respond_id_list)):
+                respondIdList = []
+            else:
+                respondIdList = [item.strip() for item in respond_id_list.split(",")]
         
             if isBlank(jumpToCase) == False:
                 self.__createJumpToNode (WorkspaceCaseId(workspace, caseId), respondIdList, jumpToCase)
@@ -275,9 +278,6 @@ class ClonedDialogTree:
     def __init__(self, sourceRoot: Node):
         self._targetRoot = self.___cloneTreeRecursive(sourceRoot)
         self._nodeSet = set()
-
-    def __insertNode(self, node: Node):
-        self._nodeSet.add(node)
 
     def ___cloneTreeRecursive(self, sourceNode: Node):
         # Recursive cloner that go root first, this is needed as we support multiple parent and used SymlinkNode as workaround
@@ -337,7 +337,7 @@ class ClonedDialogTree:
         print(RenderTree(self.getRoot(), style=AsciiStyle()).by_attr(), file=fileStream)
     
     def printMermaid(self, fileStream):
-        for line in MermaidExporter(self.getRoot(), nodefunc=lambda node: '["%s"]' % (node.name) if node.isComparedSame() else '[\\"%s"/]' % (node.name) ):
+        for line in MermaidExporter(self.getRoot(), indent=4, nodefunc=lambda node: '["%s"]' % (node.name) if node.isComparedSame() else '[\\"%s"/]' % (node.name) ):
             print(line, file=fileStream)
     
 
@@ -405,7 +405,7 @@ class InputTableValidator:
                 raise Exception ("Workspace cannot be blank")      
 
             if isBlank(respond_id_list):
-                raise Exception ("Respond ID List cannot be blank")      
+                respondIdList = []    
             else:
                 respondIdList = [item.strip() for item in respond_id_list.split(",")]
 
@@ -606,6 +606,6 @@ class NodeToDrlRulePrinterSingleton:
                 else:
                     if isinstance(node, SymlinkNode) == False: # rule is already emitted by true node, symlink does not need a rule
                         raise Exception("type " + str(type(node)) + " is not yet implemented")
-                
-        print("    $dialog.responds(" + node.getRespondIdList()[0] +")")
+        if len(node.getRespondIdList()) > 0:        
+            print("    $dialog.responds(" + node.getRespondIdList()[0] +")")
         print("end", file=fileStream)
