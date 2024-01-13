@@ -40,6 +40,8 @@ def nodefunc(node):
     else:
         return '[\\"%s"/]' % (node.name)        
 
-clonedTree1.printMermaid(sys.stdout)
+with open('tree1.md', mode='w') as file_object:
+    clonedTree1.printMermaid(file_object)
 print("***********************")
-clonedTree2.printMermaid(sys.stdout)
+with open('tree2.md', mode='w') as file_object:
+    clonedTree2.printMermaid(file_object)
