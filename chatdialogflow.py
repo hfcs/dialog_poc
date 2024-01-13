@@ -6,7 +6,8 @@ from anytree.exporter import MermaidExporter
 ##############################################
 # TODO: move hard coded config into config file and read from there
 
-faq_column = {"WORKSPACE": 2,
+faq_column = {"ID": 1,
+              "WORKSPACE": 2,
               "CASE_ID": 3, 
               "JUMP_TO_CASE": 5, 
               "RESPONSE_ID_LIST": 6,
@@ -177,9 +178,9 @@ class DialogFlowForest:
         node = LeafNode(workspaceCaseId, respondIdList, procedureAdvisoryIdList)
         self.__insertNode(workspaceCaseId.getWorkspace(), node)
 
-    def createSwitchWorkspaceNode (self, workspaceCaseId: WorkspaceCaseId, respondIdList: str):
-        #print("__createSwitchWorkspaceNode " + str(workspaceCaseId))
-        raise Exception("not yet implemented")
+    #def createSwitchWorkspaceNode (self, workspaceCaseId: WorkspaceCaseId, respondIdList: str):
+    #    #print("__createSwitchWorkspaceNode " + str(workspaceCaseId))
+    #    raise Exception("not yet implemented")
 
     def __connectParentChildren (self):
         #print("***** tree root dictionary *****")
@@ -375,16 +376,32 @@ class InputTableValidator:
     _workspaceButtonCaseIdListDict = {}
     # "Global reference table", a set of (workspace, case_id) of workspace switching reference
     _switchWorkspaceSet = set()
+    # a set of tuple (line, column, issue) to record problem we found
+    _issueSet = set()
 
     def __init__(self):
         self._workspaceCaseIdDict = {}
         self._workspaceJumpToDict = {}
         self._workspaceButtonCaseIdListDict = {}
         self._switchWorkspaceSet = set()
+        self._issueSet = set()
+
+    def _logIssue(self, line:int, columnStr:str, issue:str):
+        columnOffset = faq_column.get(columnStr) - 1
+        if columnOffset > 25:
+            raise Exception ("not yet supported column beyond Z")
+        
+        self._issueSet.add(((line, chr(ord('A') + columnOffset)), issue))
+    
+    def getIssueSet(self):
+        return self._issueSet
 
     ###############################################################################
     # Pre-scan pass for recording symbol tables for validation
     def preScanPass(self, df):
+
+        # first data row in the except is row 2
+        rowNumber = 2
 
         for index, row in df.iterrows():
 
@@ -399,10 +416,10 @@ class InputTableValidator:
             buttonCaseIdList = []
     
             if isBlank(caseId):
-                raise Exception ("Case ID cannot be blank")
+                self._logIssue (rowNumber, "CASE_ID", "Case ID cannot be blank")
     
             if isBlank(workspace):
-                raise Exception ("Workspace cannot be blank")      
+                self._logIssue (rowNumber, "WORKSPACE", "Workspace cannot be blank")    
 
             if isBlank(respond_id_list):
                 respondIdList = []    
@@ -412,21 +429,21 @@ class InputTableValidator:
             if isBlank(button_case_id_list) == False:
                 buttonCaseIdList = [item.strip() for item in button_case_id_list.split(",")]
                 if len(set(buttonCaseIdList)) != len(buttonCaseIdList):
-                    raise Exception ("Button case ID list cannot contain duplicate entries")
+                    self._logIssue (rowNumber, "BUTTON_CASE_ID_LIST", "Button case ID list cannot contain duplicate entries")
+            
+            if isBlank(action_button_id_list) == False:
                 actionButtonIdList = [item.strip() for item in action_button_id_list.split(",")]
                 if len(set(actionButtonIdList)) != len(actionButtonIdList):
-                    raise Exception ("Action Button case ID list cannot contain duplicate entries")
-                if len(set(actionButtonIdList)) != len(set(buttonCaseIdList)):
-                    raise Exception ("Action button list must have same size as button case ID list")
-
+                    self._logIssue (rowNumber, "ACTION_BUTTON_ID_LIST", "Action Button case ID list cannot contain duplicate entries")
 
             # "Symbol table", a dictionary of workspace (key) and their defined Case ID set (value as set of case ID)
             if workspace in self._workspaceCaseIdDict:
                 caseIdList = self._workspaceCaseIdDict.get(workspace)
-                if caseId not in caseIdList:
-                    caseIdList.add(caseId)
-                else:
-                    raise Exception ("Case ID \'" + caseId + "\' is defined more than once in workspace \'" + workspace + "\'")
+                if isBlank(caseId) == False:
+                    if caseId not in caseIdList:
+                        caseIdList.add(caseId)
+                    else:
+                        self._logIssue (rowNumber, "CASE_ID", "Case ID \'" + caseId + "\' is defined more than once in workspace \'" + workspace + "\'")
             else:
                 self._workspaceCaseIdDict.update({workspace:{caseId}})
 
@@ -449,39 +466,47 @@ class InputTableValidator:
             # "Global reference table", a set of (workspace, case_id) of workspace switching reference
             #_switchWorkspaceSet = set()
             # TODO
+                    
+            ################ handling for this row ends here, handle next row ###################
+            rowNumber = rowNumber + 1
     
     ###############################################################################
     # validation pass for spotting malformed dialog flow input
     # loop through the rows using iterrows()
     def validationPass(self, df):
             
-    #TODO: handle advisory procedure check against non-leaf
-
-    #for index, row in df.iterrows():
-    #   TODO: do something
+        # first data row in the except is row 2
+        #rowNumber = 2
+        #
+        #for index, row in df.iterrows():
+        #   TODO: do something\
+        #   
+            ################ handling for this row ends here, handle next row ###################
+            #rowNumber = rowNumber + 1
             
         # Validate all jump-to are defined
         for workspace in self._workspaceJumpToDict.keys():
             if workspace in self._workspaceCaseIdDict:
                 for jumpToCaseId in self._workspaceJumpToDict.get(workspace):
                     if jumpToCaseId not in self._workspaceCaseIdDict.get(workspace):
-                        raise Exception ("Jump to case ID \'" + jumpToCaseId + "\' is not defined in workspace " + workspace)
+                        self._logIssue (1, "ID", "Jump to case ID \'" + jumpToCaseId + "\' is not defined in workspace " + workspace)
             else:
-                raise Exception ("No case ID are defined in workspace " + workspace)
+                raise Exception("Internal Error")  # this should never happen, as jump to is always same workspace
 
         # Validate all button case id list are defined
         for workspace in self._workspaceButtonCaseIdListDict.keys():
             if workspace in self._workspaceCaseIdDict:
-                for jumpToCaseId in self._workspaceButtonCaseIdListDict.get(workspace):
-                    if jumpToCaseId not in self._workspaceCaseIdDict.get(workspace):
-                        raise Exception ("Button case ID list \'" + jumpToCaseId + "\' is not defined in workspace " + workspace)
+                for buttonCaseId in self._workspaceButtonCaseIdListDict.get(workspace):
+                    if buttonCaseId not in self._workspaceCaseIdDict.get(workspace):
+                        self._logIssue (1, "ID", "Button case ID list \'" + buttonCaseId + "\' is not defined in workspace " + workspace)
             else:
-                raise Exception ("No case ID are defined in workspace " + workspace)
+                raise Exception("Internal Error")  # this should never happen, as button case ID is always in same workspace
 
         # Validate all switch workspace case id are defined   
-        for switchWorkspaceItem in self._switchWorkspaceSet:
-            if switchWorkspaceItem.value() not in self._workspaceCaseIdDict.get(switchWorkspaceItem.key()):
-                raise Exception ("Switch workspace case ID \'" + switchWorkspaceItem.value() + "\' is not defined in workspace " + switchWorkspaceItem.key())
+        #for switchWorkspaceItem in self._switchWorkspaceSet:
+        #    if switchWorkspaceItem.value() not in self._workspaceCaseIdDict.get(switchWorkspaceItem.key()):
+        #        self._logIssue (1, "ID", "Switch workspace case ID \'" + switchWorkspaceItem.value() + "\' is not defined in workspace " + switchWorkspaceItem.key())
+            
         
 
 ###############################################################################
