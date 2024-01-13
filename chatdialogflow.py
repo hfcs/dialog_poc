@@ -267,9 +267,11 @@ class DialogFlowForest:
             print(RenderTree(root, style=AsciiStyle()).by_attr(), file=fileStream)
 
     def printMermaid(self, fileStream):
+        print ("```mermaid", file=fileStream)
         for root in self._workspaceTreeRootDict.values():
             for line in MermaidExporter(root):
                 print(line, file=fileStream)
+        print ("```", file=fileStream)
 
 class ClonedDialogTree:
 
@@ -338,9 +340,10 @@ class ClonedDialogTree:
         print(RenderTree(self.getRoot(), style=AsciiStyle()).by_attr(), file=fileStream)
     
     def printMermaid(self, fileStream):
+        print ("```mermaid", file=fileStream)
         for line in MermaidExporter(self.getRoot(), indent=4, nodefunc=lambda node: '["%s"]' % (node.name) if node.isComparedSame() else '[\\"%s"/]' % (node.name) ):
             print(line, file=fileStream)
-    
+        print ("```", file=fileStream) 
 
 # Types of rows
 # 0. case ID MIN_START is a reserved name for root nodes
