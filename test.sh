@@ -1,6 +1,8 @@
 #/usr/bin env bash
 
-rm -r htmlcov
-python3 -m coverage run -m unittest process_faq.py 
+rm -rf htmlcov
+python3 -m coverage run -a process_faq.py 
+python3 -m coverage run -a test_treediff.py
+python3 -m coverage run -a validator_test.py
 python3 -m coverage html
 

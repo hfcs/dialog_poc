@@ -8,6 +8,12 @@ myValidator = InputTableValidator()
 
 df = pd.read_excel('faq.xlsx') # or read_sql()
 
+###############################################################################
+# This is a demo/test of happy flow on a well formed input table
+
+###############################################################################
+# Validation pass
+
 myValidator.preScanPass(df)
 myValidator.validationPass(df)
 
