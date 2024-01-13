@@ -24,7 +24,7 @@ root_reserved_case_id = "MIN_START"
 # Utility functions
 
 def isBlank(label):
-    return pd.isna(label)
+    return pd.isnull(label)
 
 
 def _isReservedCaseId(caseId: str):
